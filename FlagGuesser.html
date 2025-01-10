@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flag Guesser App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6dd5fa, #2980b9);
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .flag {
+            width: 80%;
+            max-width: 300px;
+            margin: 20px auto;
+            border: 5px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .options button {
+            padding: 12px;
+            font-size: 16px;
+            border: none;
+            background: #3498db;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .options button:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+        .options button.correct {
+            background: #2ecc71;
+        }
+        .options button.incorrect {
+            background: #e74c3c;
+        }
+        .scoreboard {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 1.2rem;
+            color: #34495e;
+        }
+        .result {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 20px;
+            color: #27ae60;
+        }
+        @media (max-width: 768px) {
+            .options button {
+                font-size: 14px;
+                padding: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flag Guesser App</h1>
+        <div id="game">
+            <img id="flagImage" class="flag" src="" alt="Flag" />
+            <div class="options" id="options"></div>
+            <div class="scoreboard">
+                <p>Player 1 Score: <span id="player1Score">0</span></p>
+                <p>Player 2 Score: <span id="player2Score">0</span></p>
+                <p>Turn: <span id="currentPlayer">Player 1</span></p>
+            </div>
+        </div>
+        <div id="finalResult" class="result"></div>
+    </div>
+
+    <script>
+        const FLAGS_API_BASE_URL = "https://flagsapi.com";
+
+        const countries = {
+            "US": "United States",
+            "BE": "Belgium",
+            "IN": "India",
+            "FR": "France",
+            "JP": "Japan",
+            "BR": "Brazil",
+            "DE": "Germany",
+            "ZA": "South Africa",
+            "IT": "Italy",
+            "CN": "China",
+            "AE":"UAE",
+            "AF":"Afghanistan",
+            "AR":"Argentina",
+            "AU":"Australia",
+            "AZ":"Ajerbaijan",
+            "BD":"Bangladesh",
+            "BR":"Brazil",
+            "BT":"Bhutan",
+            "CA":"Canada",
+            "CH":"Switzerland",
+            "CL":"Chile",
+            "CY":"Cyprus",
+            "EG":"Egypt",
+            "FI":"Finland",
+            "IE":"Ireland",
+            "IL":"Israel",
+            "KE":"Kenya",
+            "KR":"South Korea",
+            "LK":"Sri Lanka",
+            "MN":"Mongolia",
+            "MY":"Malaysia",
+            "NZ":"New Zealand",
+            "PT":"Portugal",
+            "RU":"Russia",
+            "SE":"Sweden",
+            "SG":"Singapore",
+        };
+
+        const game = {
+            player1Score: 0,
+            player2Score: 0,
+            currentPlayer: 1,
+            turnCount: 0,
+            maxTurns: 10, // 5 chances for each player
+        };
+
+        const flagImage = document.getElementById("flagImage");
+        const optionsDiv = document.getElementById("options");
+        const player1ScoreSpan = document.getElementById("player1Score");
+        const player2ScoreSpan = document.getElementById("player2Score");
+        const currentPlayerSpan = document.getElementById("currentPlayer");
+        const finalResultDiv = document.getElementById("finalResult");
+
+        function getRandomCountryCode() {
+            const countryCodes = Object.keys(countries);
+            return countryCodes[Math.floor(Math.random() * countryCodes.length)];
+        }
+
+        function getFlagUrl(countryCode) {
+            return `${FLAGS_API_BASE_URL}/${countryCode}/flat/64.png`;
+        }
+
+        function getOptions(correctCountry) {
+            const options = new Set([correctCountry]);
+
+            while (options.size < 4) {
+                const randomCountry = getRandomCountryCode();
+                options.add(randomCountry);
+            }
+
+            return shuffle([...options]);
+        }
+
+        function loadQuestion() {
+            const correctCountry = getRandomCountryCode();
+            flagImage.src = getFlagUrl(correctCountry);
+
+            const options = getOptions(correctCountry);
+            optionsDiv.innerHTML = "";
+
+            options.forEach((option) => {
+                const button = document.createElement("button");
+                button.textContent = countries[option];
+                button.addEventListener("click", () => handleAnswer(option, correctCountry, button));
+                optionsDiv.appendChild(button);
+            });
+        }
+
+        function handleAnswer(selected, correct, button) {
+            Array.from(optionsDiv.children).forEach(btn => {
+                if (btn.textContent === countries[correct]) {
+                    btn.classList.add("correct");
+                } else {
+                    btn.classList.add("incorrect");
+                }
+            });
+
+            if (selected === correct) {
+                if (game.currentPlayer === 1) {
+                    game.player1Score++;
+                } else {
+                    game.player2Score++;
+                }
+            }
+
+            updateScoreboard();
+
+            setTimeout(() => {
+                game.turnCount++;
+
+                if (game.turnCount === 5) {
+                    game.currentPlayer = 2;
+                    updateScoreboard();
+                } else if (game.turnCount === 10) {
+                    endGame();
+                } else {
+                    loadQuestion();
+                }
+            }, 2000);
+        }
+
+        function updateScoreboard() {
+            player1ScoreSpan.textContent = game.player1Score;
+            player2ScoreSpan.textContent = game.player2Score;
+            currentPlayerSpan.textContent = `Player ${game.currentPlayer}`;
+        }
+
+        function endGame() {
+            const { player1Score, player2Score } = game;
+
+            if (player1Score > player2Score) {
+                finalResultDiv.textContent = "Player 1 Wins!";
+            } else if (player2Score > player1Score) {
+                finalResultDiv.textContent = "Player 2 Wins!";
+            } else {
+                finalResultDiv.textContent = "It's a Tie!";
+            }
+
+            document.getElementById("game").style.display = "none";
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        loadQuestion();
+    </script>
+</body>
+</html>
